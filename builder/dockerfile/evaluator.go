@@ -21,6 +21,7 @@ package dockerfile
 
 import (
 	"fmt"
+    "regexp"
 	"runtime"
 	"strings"
 
@@ -106,7 +107,10 @@ func (b *Builder) dispatch(stepN int, ast *parser.Node) error {
 	original := ast.Original
 	flags := ast.Flags
 	strList := []string{}
-	msg := fmt.Sprintf("Step %d : %s", stepN+1, upperCasedCmd)
+	msg := fmt.Sprintf("Step %d : ", stepN+1)
+    // For proper indentation of multiline commands
+    msgPrefixLen := len(msg)
+    msg += fmt.Sprintf("%s", upperCasedCmd)
 
 	if len(ast.Flags) > 0 {
 		msg += " " + strings.Join(ast.Flags, " ")
@@ -188,6 +192,18 @@ func (b *Builder) dispatch(stepN int, ast *parser.Node) error {
 	}
 
 	msg += " " + strings.Join(msgList, " ")
+
+    var atleastTwoWhitespaces = regexp.MustCompile(`[ \t][ \t]+`)
+    msg = atleastTwoWhitespaces.ReplaceAllString(msg, "\n$0")
+	fmt.Fprintln(b.Stdout, msg)
+
+    linechangeAndIndent := "\n"
+    for i := 0; i < msgPrefixLen; i++ {
+        linechangeAndIndent += " "
+    }
+    var lineChange = regexp.MustCompile(`\n`)
+    msg = lineChange.ReplaceAllString(msg, linechangeAndIndent)
+
 	fmt.Fprintln(b.Stdout, msg)
 
 	// XXX yes, we skip any cmds that are not valid; the parser should have
